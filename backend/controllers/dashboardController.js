@@ -1,63 +1,154 @@
-const Wallet = require("../models/Wallet")
-const Transaction = require("../models/Transaction")
+const Wallet = require("../models/Wallet");
+const Transaction = require("../models/Transaction");
 
-exports.getDashboardSummary = async (req,res)=>{
+const { getSuggestions } = require("../services/spendingAdvisor");
+const { generateInsights } = require("../services/insightService");
+const { predictMonthlySpend } = require("../services/budgetPredictor");
+const { generateAdvice } = require("../services/financialAdvisor");
 
- try{
+exports.getDashboardSummary = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-  const userId = req.user.id
+    // 1️⃣ Get all wallets of the user
+    const wallets = await Wallet.find({ members: userId });
+    const walletIds = wallets.map((w) => w._id);
 
-  // 1️⃣ Get wallets of user
-  const wallets = await Wallet.find({ members:userId })
+    // 2️⃣ Calculate Total Wallet Balance
+    let totalBalance = 0;
+    wallets.forEach((wallet) => {
+      totalBalance += wallet.balance;
+    });
 
-  const walletIds = wallets.map(w=>w._id)
+    // 3️⃣ Get all transactions from these wallets
+    const transactions = await Transaction.find({
+      walletId: { $in: walletIds },
+    });
 
-  // 2️⃣ Total Wallet Balance
-  let totalBalance = 0
-  wallets.forEach(w=>{
-   totalBalance += w.balance
-  })
+    // 4️⃣ Calculate Total Spending
+    let totalSpent = 0;
+    transactions.forEach((transaction) => {
+      totalSpent += transaction.amount;
+    });
 
-  // 3️⃣ Total Spending
-  const transactions = await Transaction.find({
-   walletId:{$in:walletIds}
-  })
+    // 5️⃣ Predict Monthly Spending
+    const prediction = predictMonthlySpend(transactions);
 
-  let totalSpent = 0
-  transactions.forEach(t=>{
-   totalSpent += t.amount
-  })
+    // 6️⃣ Generate Financial Advice
+    const advice = generateAdvice(transactions);
 
-  // 4️⃣ Category Spending
-  const categoryMap = {}
+    // 7️⃣ Category-wise spending
+    const categoryMap = {};
 
-  transactions.forEach(t=>{
-   if(!categoryMap[t.category]){
-    categoryMap[t.category] = 0
-   }
-   categoryMap[t.category] += t.amount
-  })
+    transactions.forEach((transaction) => {
+      if (!categoryMap[transaction.category]) {
+        categoryMap[transaction.category] = 0;
+      }
 
-  // 5️⃣ Recent Transactions
-  const recentTransactions = await Transaction.find({
-   walletId:{$in:walletIds}
-  })
-  .sort({createdAt:-1})
-  .limit(5)
+      categoryMap[transaction.category] += transaction.amount;
+    });
 
-  res.json({
-   totalWallets: wallets.length,
-   totalBalance,
-   totalSpent,
-   categorySpending: categoryMap,
-   recentTransactions
-  })
+    // 8️⃣ Smart Suggestions
+    const suggestions = getSuggestions(categoryMap);
 
- }catch(err){
+    // 9️⃣ AI Insights
+    const insights = generateInsights(transactions);
 
-  console.error(err)
-  res.status(500).json({message:"Dashboard error"})
+    // 🔟 Recent Transactions
+    const recentTransactions = await Transaction.find({
+      walletId: { $in: walletIds },
+    })
+      .sort({ createdAt: -1 })
+      .limit(5);
 
- }
+    // 📊 Send Dashboard Response
+    res.json({
+      totalWallets: wallets.length,
+      totalBalance,
+      totalSpent,
+      categorySpending: categoryMap,
+      suggestions,
+      insights,
+      prediction,
+      advice,
+      recentTransactions,
+    });
 
-}
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Dashboard error" });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+// const Wallet = require("../models/Wallet")
+// const Transaction = require("../models/Transaction")
+
+// exports.getDashboardSummary = async (req,res)=>{
+
+//  try{
+
+//   const userId = req.user.id
+
+//   // 1️⃣ Get wallets of user
+//   const wallets = await Wallet.find({ members:userId })
+
+//   const walletIds = wallets.map(w=>w._id)
+
+//   // 2️⃣ Total Wallet Balance
+//   let totalBalance = 0
+//   wallets.forEach(w=>{
+//    totalBalance += w.balance
+//   })
+
+//   // 3️⃣ Total Spending
+//   const transactions = await Transaction.find({
+//    walletId:{$in:walletIds}
+//   })
+
+//   let totalSpent = 0
+//   transactions.forEach(t=>{
+//    totalSpent += t.amount
+//   })
+
+//   // 4️⃣ Category Spending
+//   const categoryMap = {}
+
+//   transactions.forEach(t=>{
+//    if(!categoryMap[t.category]){
+//     categoryMap[t.category] = 0
+//    }
+//    categoryMap[t.category] += t.amount
+//   })
+
+//   // 5️⃣ Recent Transactions
+//   const recentTransactions = await Transaction.find({
+//    walletId:{$in:walletIds}
+//   })
+//   .sort({createdAt:-1})
+//   .limit(5)
+
+//   res.json({
+//    totalWallets: wallets.length,
+//    totalBalance,
+//    totalSpent,
+//    categorySpending: categoryMap,
+//    recentTransactions
+//   })
+
+//  }catch(err){
+
+//   console.error(err)
+//   res.status(500).json({message:"Dashboard error"})
+
+//  }
+
+// }
