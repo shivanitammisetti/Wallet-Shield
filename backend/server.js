@@ -26,7 +26,13 @@ const aiRoutes = require("./routes/aiRoutes")
 const receiptRoutes = require("./routes/receiptRoutes");
 const settlementRoutes = require("./routes/settlementRoutes");
 const errorHandler = require("./middleware/errorHandler");  // ← NEW
+const userRoutes = require("./routes/userRoutes")
+const notificationRoutes = require("./routes/notificationRoutes")
+const chatbotRoutes = require("./routes/chatbotRoutes");
 
+
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/notifications", notificationRoutes)
 app.use("/api/auth",authRoutes)
 app.use("/api/wallet",walletRoutes)
 app.use("/api/transactions",transactionRoutes)
@@ -38,6 +44,8 @@ app.use("/api/ai", aiRoutes)
 app.use("/api/receipts", receiptRoutes);
 app.use("/api/settlements", settlementRoutes);
 app.use(errorHandler)  // ← NEW (always last)
+app.use("/api/user", userRoutes)
+// app.use("/api/wallet", walletRoutes)
 
 connectDB()
 

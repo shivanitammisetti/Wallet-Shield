@@ -1,37 +1,73 @@
 const Wallet = require("../models/Wallet")
 
 exports.createWallet = async (req, res) => {
+  try {
 
- try {
+    const { name, category, description, limit, members } = req.body
 
-  const { name, owner, members } = req.body
+    const userId = req.user.id
 
-//   const wallet = new Wallet({
-//    name,
-//    owner,
-//    members: [...new Set([owner, ...(members || [])])]
-//   })
+    // ✅ VALIDATION
+    if (!name || !category) {
+      return res.status(400).json({
+        message: "Name and category are required"
+      })
+    }
 
     const wallet = new Wallet({
-    name,
-    owner: req.user.id,
-    members: [...new Set([req.user.id, ...(members || [])])]
-})
+      name,
+      category,
+      description,
+      limit,
+      owner: userId,
+      members: [...new Set([userId, ...(members || [])])]
+    })
+
+    await wallet.save()
+
+    res.json({
+      message: "Wallet created successfully ✅",
+      wallet
+    })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Server error" })
+  }
+}
+
+// exports.createWallet = async (req, res) => {
+
+//  try {
+
+//   const { name, owner, members } = req.body
+
+// //   const wallet = new Wallet({
+// //    name,
+// //    owner,
+// //    members: [...new Set([owner, ...(members || [])])]
+// //   })
+
 //     const wallet = new Wallet({
 //     name,
 //     owner: req.user.id,
-//     members: [req.user.id, ...members]
+//     members: [...new Set([req.user.id, ...(members || [])])]
 // })
+// //     const wallet = new Wallet({
+// //     name,
+// //     owner: req.user.id,
+// //     members: [req.user.id, ...members]
+// // })
 
-  await wallet.save()
+//   await wallet.save()
 
-  res.json(wallet)
+//   res.json(wallet)
 
- } catch (err) {
-  res.status(500).json(err)
- }
+//  } catch (err) {
+//   res.status(500).json(err)
+//  }
 
-}
+// }
 
 exports.getWallets = async(req,res)=>{
 
@@ -99,5 +135,29 @@ exports.addMembers = async (req, res) => {
       message: "Failed to add members"
     })
 
+  }
+}
+
+
+exports.addMoney = async (req, res) => {
+  try {
+    const { walletId, amount } = req.body
+
+    const wallet = await Wallet.findById(walletId)
+
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found" })
+    }
+
+    wallet.balance += amount
+    await wallet.save()
+
+    res.json({
+      message: "Money added successfully 💰",
+      balance: wallet.balance
+    })
+
+  } catch (err) {
+    res.status(500).json({ message: err.message })
   }
 }
